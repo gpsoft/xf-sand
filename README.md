@@ -32,7 +32,7 @@ If you compose them...
 
 ## With transducers
 
-    ;; these three are all transducer
+    ;; these three are all transducers
     (def count-t
       (map count))
     (def str-t
@@ -134,9 +134,11 @@ Reducing functions(such as `rf-v` and `rf-s`) should have 0-arity, 1-arity, and 
     (rf-s "12")         ;;=> "12"
 
 - 0-arity version is used to create initial value when it's not supplied to `reduce`
-- 2-arity version do the reduction
+- 2-arity version does the reduction
 - 1-arity version is called once after reducing is done and returns final output
 
 ### Early termination
 
-When reducing is finished before consuming all inputs, the 2-arity version calls `reduced`. You can see if it's done or not with `reduced?`. When it is, use `deref` to get the final value. And you can't re-use the reducing function any more.
+T.B.D.
+
+When reducing is finished before consuming all inputs, the 2-arity version can call `reduced`. You can see if it's done or not with `reduced?`. When it is, use `deref` to get the final value. And you can't re-use the reducing function any more(because it has states inside).
