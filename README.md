@@ -119,26 +119,54 @@ You don't care about them until you `reduce`/`transduce` for the final output.
 
 ## Reducing functions
 
-### Multiple arity
+Usually reducing functions are just something that take two arguments(an accumulated value and an input value) and return new accumulated value. They actually have more specific requirements to be used with transducers.
 
-Reducing functions(such as `rf-v` and `rf-s`) should have 0-arity, 1-arity, and 2-arity versions.
+### Multi-arity
 
-    (def rf-v (all-t conj))
-    (rf-v)                ;;=> []
-    (rf-v ["1"] #{1 2})   ;;=> ["1" "2"]
-    (rf-v ["1" "2"])      ;;=> ["1" "2"]
+Reducing functions should have 0-arity, 1-arity, and 2-arity versions.
 
-    (def rf-s (all-t str))
-    (rf-s)              ;;=> ""
-    (rf-s "1" #{1 2})   ;;=> "12"
-    (rf-s "12")         ;;=> "12"
+    (def rf1 (count-str-t conj))
+
+    (rf1)                    ;;=> []
+
+    (rf1 ["1"] #{1 2})       ;;=> ["1" "2"]
+    (rf1 ["1" "2"] #{1 2 3}) ;;=> ["1" "2" "3"]
+
+    (rf1 ["1"])              ;;=> ["1"]
+    (rf1 ["1" "2"])          ;;=> ["1" "2"]
 
 - 0-arity version is used to create initial value when it's not supplied to `reduce`
 - 2-arity version does the reduction
 - 1-arity version is called once after reducing is done and returns final output
 
+Let's define one.
+
+    (defn rf-csv
+      ([] "")
+      ([acc s]
+       (if (empty? acc)
+         s
+         (str acc "," s)))
+      ([acc] (str "/" acc "/")))
+    (transduce count-str-t rf-csv d)  ;;=> "/1,5,2,3/"
+    (transduce all-t rf-csv d)        ;;=> "/1,2/"
+
 ### Early termination
+
+If reducing is finished before consuming all inputs, the 2-arity version can call `reduced`. Then `reduce`/`transduce` will know it by using `reduced?` and stop reduction.
+
+    (defn rf-csv-until3
+      ([] "")
+      ([acc s]
+       (if (= s "3")
+         (reduced acc)
+         (if (empty? acc)
+           s
+           (str acc "," s))))
+      ([acc] (str "/" acc "/")))
+    (transduce count-str-t rf-csv-until3 d)  ;;=> "/1,5,2/"
+
+## Transducers with state
 
 T.B.D.
 
-When reducing is finished before consuming all inputs, the 2-arity version can call `reduced`. You can see if it's done or not with `reduced?`. When it is, use `deref` to get the final value. And you can't re-use the reducing function any more(because it has states inside).

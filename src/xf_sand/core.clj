@@ -75,6 +75,37 @@
 
 
 ;; reducing functions come with three overloaded versions:
+(def rf1 (count-str-t conj))
+(rf1)                    ;;=> []
+(rf1 ["1"] #{1 2})       ;;=> ["1" "2"]
+(rf1 ["1" "2"] #{1 2 3}) ;;=> ["1" "2" "3"]
+(rf1 ["1"])              ;;=> ["1"]
+(rf1 ["1" "2"])          ;;=> ["1" "2"]
+
+;; my reducing function
+(defn rf-csv
+  ([] "")
+  ([acc s]
+   (if (empty? acc)
+     s
+     (str acc "," s)))
+  ([acc] (str "/" acc "/")))
+(transduce count-str-t rf-csv d)  ;;=> "/1,5,2,3/"
+(transduce all-t rf-csv d)        ;;=> "/1,2/"
+
+;; early termination
+(defn rf-csv-until3
+  ([] "")
+  ([acc s]
+   (if (= s "3")
+     (reduced acc)
+     (if (empty? acc)
+       s
+       (str acc "," s))))
+  ([acc] (str "/" acc "/")))
+(transduce count-str-t rf-csv-until3 d)  ;;=> "/1,5,2/"
+
+
 (def rf-v (all-t conj))
 (rf-v)                ;;=> []
 (rf-v ["1"] #{1 2})   ;;=> ["1" "2"]
@@ -84,3 +115,13 @@
 (rf-s)              ;;=> ""
 (rf-s "1" #{1 2})   ;;=> "12"
 (rf-s "12")         ;;=> "12"
+
+;; early termination
+(def rf-v (all-t conj))
+(let [acc (rf-v ["1"] #{1})]
+  (if (reduced? acc) @acc :not-yet))  ;;=> :not-yet
+(let [acc (rf-v ["1"] #{1 2 3 4 5})]
+  (if (reduced? acc) @acc :not-yet))  ;;=> :not-yet
+(let [acc (rf-v ["1"] #{1 2})]
+  (if (reduced? acc) @acc :not-yet))  ;;=> ["1" "2"]
+
