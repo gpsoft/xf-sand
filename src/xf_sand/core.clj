@@ -106,22 +106,39 @@
 (transduce count-str-t rf-csv-until3 d)  ;;=> "/1,5,2/"
 
 
-(def rf-v (all-t conj))
-(rf-v)                ;;=> []
-(rf-v ["1"] #{1 2})   ;;=> ["1" "2"]
-(rf-v ["1" "2"])      ;;=> ["1" "2"]
+;; reducing function may have a state (it's not necessarily pure!)
+(def rf-t2 (take2-t conj))
+(let [acc (rf-t2 [] 1)] (reduced? acc))   ;;=> false
+(let [acc (rf-t2 [] 1)] (reduced? acc))   ;;=> true
+(rf-t2 [])
+(let [acc (rf-t2 [] 1)] (reduced? acc))   ;;=> true (it didn't reset the state)
 
-(def rf-s (all-t str))
-(rf-s)              ;;=> ""
-(rf-s "1" #{1 2})   ;;=> "12"
-(rf-s "12")         ;;=> "12"
 
-;; early termination
-(def rf-v (all-t conj))
-(let [acc (rf-v ["1"] #{1})]
-  (if (reduced? acc) @acc :not-yet))  ;;=> :not-yet
-(let [acc (rf-v ["1"] #{1 2 3 4 5})]
-  (if (reduced? acc) @acc :not-yet))  ;;=> :not-yet
-(let [acc (rf-v ["1"] #{1 2})]
-  (if (reduced? acc) @acc :not-yet))  ;;=> ["1" "2"]
+;;; PROBLEM#3
+;;; Define a function that creates a transducer.
+;;; Given n, f, and p, the transducer applies f to the first n elements
+;;; that matches the predicate p.
+;;; Ex: (def nfp-t (mk-nfp-t 3 inc even?))
+;;;     (transduce nfp-t conj [1 2 3 4 5 6 7 8 9])  ;;=> [1 3 3 5 5 7 7 8 9]
 
+(defn mk-nfp-t
+  [n f p]
+  (fn [rf]
+    (let [cnt (atom n)]
+      (fn
+        ([] (rf))
+        ([acc] (rf acc))
+        ([acc e]
+         (let [match (p e)
+               ee (f e)]
+           (if match
+             (if (pos? @cnt)
+               (do (swap! cnt dec)
+                   (rf acc ee))
+               (rf acc e))
+             (rf acc e))))))))
+(def nfp-t (mk-nfp-t 3 inc even?))
+(transduce nfp-t conj [1 2 3 4 5 6 7 8 9])  ;;=> [1 3 3 5 5 7 7 8 9]
+(transduce
+  (comp (map #(* % 2)) nfp-t str-t take2-t)
+  rf-csv [1 2 3 4 5 6 7 8 9])               ;;=> "/3,5/"
