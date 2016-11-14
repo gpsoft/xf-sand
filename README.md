@@ -236,3 +236,59 @@ Define a function that creates a transducer. Given `n`, `f`, and `p`, the transd
       (comp (map #(* % 2)) nfp-t str-t take2-t)
       rf-csv [1 2 3 4 5 6 7 8 9])               ;;=> "/3,5/"
 
+# Transducers with channels
+
+Our input context has been limited to collections(vectors to be exact) so far. Transducers are, however, independent from the source context. For example, `core.async` provides a decent set of functions for channels to work with transducers.
+
+    (require '[clojure.core.async :as async])
+
+    (def c (async/chan 1 count-str-t))  ;; input channel
+    (def rc (async/reduce conj [] c))   ;; reduce returns the output channel
+
+`chan` takes a transducer and creates an input channel from which `reduce` takes input and do the reduction in conjunction with the transducer. `reduce` returns another channel and you can take the final output from it.
+
+Now we can wait the result and print it.
+
+    (async/take! rc prn)
+
+Then put some values to the input channel.
+
+    (async/put! c #{1})               ;; nothing happens
+    (async/put! c #{\a \b \c \d \e})  ;; still nothing
+    (async/put! c #{"aa" "bb"})       ;; silent
+    (async/close! c)                  ;; ["1" "5" "2"] is printed
+
+Another example(with `d` and `all-t`):
+
+    (let [c (async/chan)
+          rc (async/transduce all-t str "" c)]
+      (async/take! rc prn)
+      (for [s d]
+        (async/put! c s)))            ;; "12" is printed
+
+# Other than *transduce*
+
+T.B.D.
+
+# Digging deeper
+
+T.B.D.
+
+Let's review the types of all functions above.
+
+    ;; IN                        -> OUT
+    [#{1} #{\a \b \c \d \e} ...] -> ["1" "5" "2" "3"]
+
+    [set] -> [string]
+
+
+    count       :: set -> long
+    count-t     :: (x, long -> x) -> (x, set -> x)
+    str         :: long -> string
+    str-t       :: (x, string -> x) -> (x, long -> x)
+    count-str-t :: (x, string -> x) -> (x, set -> x)
+
+    (reduce (count-str-t conj) [] d)
+    conj          :: (x, string -> x)
+    (count-str-t) :: (x, set -> x)
+

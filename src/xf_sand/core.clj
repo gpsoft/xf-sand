@@ -1,4 +1,5 @@
-(ns xf-sand.core)
+(ns xf-sand.core
+  (:require [clojure.core.async :as async]))
 
 ;; data
 (def d
@@ -142,3 +143,22 @@
 (transduce
   (comp (map #(* % 2)) nfp-t str-t take2-t)
   rf-csv [1 2 3 4 5 6 7 8 9])               ;;=> "/3,5/"
+
+
+;; transducers with channels
+(def c (async/chan 1 count-str-t))  ;; input channel
+(def rc (async/reduce conj [] c))   ;; `reduce` returns the output channel
+(async/take! rc prn)                ;; wait the result and print it
+
+(async/put! c #{1})               ;; nothing happens
+(async/put! c #{\a \b \c \d \e})  ;; still nothing
+(async/put! c #{"aa" "bb"})       ;; silent
+(async/close! c)                  ;; ["1" "5" "2"] is printed
+
+;; another example
+(let [c (async/chan)
+      rc (async/transduce all-t str "" c)]
+  (async/take! rc prn)
+  (for [s d]
+    (async/put! c s)))            ;; "12" is printed
+
