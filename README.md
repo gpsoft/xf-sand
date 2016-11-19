@@ -2,6 +2,8 @@
 
 A practice of Transducers in Clojure.
 
+日本語版は→[「ClojureでTransducer」](http://gpsoft.dip.jp/hiki/?Clojure%E3%81%A7Transducer)
+
 # PROBLEM#1
 
 Here is a sample data.
