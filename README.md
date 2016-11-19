@@ -123,7 +123,7 @@ Usually reducing functions are just something that take two arguments(an accumul
 
 ### Multi-arity
 
-Reducing functions should have 0-arity, 1-arity, and 2-arity versions.
+Reducing functions should be 3-arity.
 
     (def rf1 (count-str-t conj))
 
@@ -135,9 +135,9 @@ Reducing functions should have 0-arity, 1-arity, and 2-arity versions.
     (rf1 ["1"])              ;;=> ["1"]
     (rf1 ["1" "2"])          ;;=> ["1" "2"]
 
-- 0-arity version(init) is used to create initial value when it's not supplied to `reduce`
-- 2-arity version(step) does the reduction
-- 1-arity version(completion) is called once after reducing is done and returns final output
+- arity-0 version(Init) is used to create initial value when it's not supplied to `reduce`
+- arity-2 version(Step) does the reduction
+- arity-1 version(Completion) is called once after reducing is done and returns final output
 
 Let's define one.
 
@@ -153,7 +153,7 @@ Let's define one.
 
 ### Early termination
 
-If reducing is finished before consuming all inputs, the 2-arity version can call `reduced`. Then `reduce`/`transduce` will know it by using `reduced?` and stop reduction.
+If reducing is finished before consuming all inputs, the arity-2 version can call `reduced`. Then `reduce`/`transduce` will know it by using `reduced?` and stop reduction.
 
     (defn rf-csv-until3
       ([] "")
@@ -166,7 +166,7 @@ If reducing is finished before consuming all inputs, the 2-arity version can cal
       ([acc] (str "/" acc "/")))
     (transduce count-str-t rf-csv-until3 d)  ;;=> "/1,5,2/"
 
-`(reduced acc)` returns a wrapped value of `acc` and you need to use `deref` to take `acc` out of it. So the 2-arity version can return two different types:
+`(reduced acc)` returns a wrapped value of `acc` and you need to use `deref` to take `acc` out of it. So the arity-2 version can return two different types:
 
  - normal `acc` ...when reducing process is continuing
  - a wrapped value of `acc` ...when reducing was terminated
@@ -194,7 +194,7 @@ The reducing function `rf-t2` should have a state inside to remember the number 
     ;; count 2, and done
     (let [acc (rf-t2 [] 1)] (reduced? acc))   ;;=> true
 
-The state won't be reset even if you called the 1-arity version.
+The state won't be reset even if you called the arity-1 version.
 
     (rf-t2 [])
     (let [acc (rf-t2 [] 1)] (reduced? acc))   ;; still true
@@ -268,27 +268,58 @@ Another example(with `d` and `all-t`):
 
 # Other than *transduce*
 
-T.B.D.
+Many functions in `clojure.core`, such as `map`, `filter`, `take`, `mapcat`, create transducers. And `cat` is a transducer itself that concats inputs.
 
-# Digging deeper
+    (transduce cat conj d)   ;;=> [1 \a \b \c \d \e "aa" "bb" #{} {:k v} [1]]
+    (transduce cat str d)    ;;=> "1abcdeaabb#{}{:k v}[1]"
 
-T.B.D.
+Other than performing reduction with `transduce`, transducers can be used to create iterators, collections, or lazy sequences.
 
-Let's review the types of all functions above.
+    ;; `eduction` returns an iterable.
+    (let [iterable (eduction all-t d)]
+      (first (seq iterable))) ;;=> "1"
+
+    ;; `into` returns a collection.
+    (into [] all-t d)         ;;=> ["1" "2"]
+
+    ;; `sequence` returns a lazy seq.
+    (sequence all-t d)        ;;=> ("1" "2")
+    (sequence (map str) [1 2 3] ["apple" "orange"]) ;;=> ("1apple" "2orange")
+
+# Quick review on types
+
+Let's review the types of functions above.
+
+Input and output of PROBLEM#1:
 
     ;; IN                        -> OUT
     [#{1} #{\a \b \c \d \e} ...] -> ["1" "5" "2" "3"]
 
     [set] -> [string]
 
+The transformer `count` and the transducer `count-t`:
 
     count       :: set -> long
     count-t     :: (x, long -> x) -> (x, set -> x)
+    ;; Note that it's NOT `(x, set -> x) -> (x, long -> x)`.
+
+`str` and `str-t`:
+
     str         :: long -> string
     str-t       :: (x, string -> x) -> (x, long -> x)
+
+Generally when you `(comp g f)`, `g` have to be able to take output of `f`. Now `count-t` can take output of `str-t` because it's `(x, set -> x)`, and composed transducer is type of:
+
     count-str-t :: (x, string -> x) -> (x, set -> x)
 
-    (reduce (count-str-t conj) [] d)
-    conj          :: (x, string -> x)
-    (count-str-t) :: (x, set -> x)
+That reads `count-str-t` takes an rf whose type is `(x, string -> x)` and returns new rf whose type is `(x, set -> x)`. As we have functions conformed to `(x, string -> x)`, such as `conj` and `str`, we can create new rfs `(x, set -> x)`:
 
+    (def rf1 (count-str-t conj))   ;; rf1 :: coll, set -> coll
+    (def rf2 (count-str-t str))    ;; rf2 :: string, set -> string
+
+Finally we can use them to reduce `d` whose elements are sets.
+
+    (reduce rf1 [] d)
+    (reduce rf2 "" d)
+
+Done!

@@ -162,3 +162,12 @@
   (for [s d]
     (async/put! c s)))            ;; "12" is printed
 
+;;; other than `transduce`
+(transduce cat conj d)    ;;=> [1 \a \b \c \d \e "aa" "bb" #{} {:k v} [1]]
+(transduce cat str d)    ;;=> "1abcdeaabb#{}{:k v}[1]"
+(let [iterable (eduction all-t d)]
+  (first (seq iterable))) ;;=> "1"
+(into [] all-t d)         ;;=> ["1" "2"]
+(sequence all-t d)        ;;=> ("1" "2")
+(sequence (map str) [1 2 3] ["apple" "orange"]) ;;=> ("1apple" "2orange")
+
