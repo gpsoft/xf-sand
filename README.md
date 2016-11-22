@@ -180,7 +180,7 @@ If you use a value from a 2-ariity version of *rf* inside of a during process, d
             then      ;; it's wrapped
             else))    ;; not wrapped
 
-The source code of [clojure.core/reductions](https://github.com/clojure/clojure/blob/clojure-1.8.0/src/clj/clojure/core.clj#L6928) will help you.
+The source code of [clojure.core/interpose](https://github.com/clojure/clojure/blob/clojure-1.8.0/src/clj/clojure/core.clj#L5002) will help you.
 
 ## Transducers with state
 
